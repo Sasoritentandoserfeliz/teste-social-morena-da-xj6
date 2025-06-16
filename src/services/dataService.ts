@@ -1,284 +1,136 @@
-import { v4 as uuidv4 } from 'uuid';
-import { Institution, Donation, Category, Rating, Subcategory } from '../types';
+import { User, Donation, Delivery } from '../types';
+import { storageService } from './storageService';
 
 class DataService {
-  private readonly INSTITUTIONS_KEY = 'benigna_institutions';
-  private readonly DONATIONS_KEY = 'benigna_donations';
-  private readonly CATEGORIES_KEY = 'benigna_categories';
-  private readonly RATINGS_KEY = 'benigna_ratings';
-
-  // Institutions
-  getInstitutions(): Institution[] {
-    try {
-      const data = localStorage.getItem(this.INSTITUTIONS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error getting institutions:', error);
-      return [];
-    }
+  // Users
+  async getUsers(): Promise<User[]> {
+    return await storageService.getUsers();
   }
 
-  saveInstitution(institution: Institution): void {
-    const institutions = this.getInstitutions();
-    const existingIndex = institutions.findIndex(inst => inst.id === institution.id);
-    
-    if (existingIndex !== -1) {
-      institutions[existingIndex] = institution;
-    } else {
-      institutions.push(institution);
-    }
-    
-    localStorage.setItem(this.INSTITUTIONS_KEY, JSON.stringify(institutions));
+  async getInstitutions(): Promise<User[]> {
+    const users = await storageService.getUsers();
+    return users.filter(user => user.type === 'institution');
   }
 
-  getInstitutionById(id: string): Institution | null {
-    const institutions = this.getInstitutions();
-    return institutions.find(inst => inst.id === id) || null;
+  async getDonors(): Promise<User[]> {
+    const users = await storageService.getUsers();
+    return users.filter(user => user.type === 'donor');
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return await storageService.getUserById(id);
+  }
+
+  async updateUser(user: User): Promise<void> {
+    await storageService.updateUser(user);
   }
 
   // Donations
-  getDonations(): Donation[] {
-    try {
-      const data = localStorage.getItem(this.DONATIONS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error getting donations:', error);
-      return [];
-    }
+  async createDonation(donation: Omit<Donation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Donation> {
+    const newDonation: Donation = {
+      ...donation,
+      id: this.generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await storageService.saveDonation(newDonation);
+    return newDonation;
   }
 
-  saveDonation(donation: Donation): void {
-    const donations = this.getDonations();
-    const existingIndex = donations.findIndex(don => don.id === donation.id);
-    
-    if (existingIndex !== -1) {
-      donations[existingIndex] = donation;
-    } else {
-      donations.push(donation);
-    }
-    
-    localStorage.setItem(this.DONATIONS_KEY, JSON.stringify(donations));
+  async getDonations(): Promise<Donation[]> {
+    return await storageService.getDonations();
   }
 
-  getDonationById(id: string): Donation | null {
-    const donations = this.getDonations();
-    return donations.find(don => don.id === id) || null;
+  async getDonationById(id: string): Promise<Donation | null> {
+    return await storageService.getDonationById(id);
   }
 
-  getDonationsByDonor(donorId: string): Donation[] {
-    const donations = this.getDonations();
-    return donations.filter(don => don.donorId === donorId);
+  async getDonationsByDonor(donorId: string): Promise<Donation[]> {
+    const donations = await storageService.getDonations();
+    return donations.filter(donation => donation.donorId === donorId);
   }
 
-  getDonationsByInstitution(institutionId: string): Donation[] {
-    const donations = this.getDonations();
-    return donations.filter(don => don.institutionId === institutionId);
+  async getDonationsByInstitution(institutionId: string): Promise<Donation[]> {
+    const donations = await storageService.getDonations();
+    return donations.filter(donation => donation.institutionId === institutionId);
   }
 
-  // Categories
-  getCategories(): Category[] {
-    try {
-      const data = localStorage.getItem(this.CATEGORIES_KEY);
-      return data ? JSON.parse(data) : this.getDefaultCategories();
-    } catch (error) {
-      console.error('Error getting categories:', error);
-      return this.getDefaultCategories();
-    }
+  async getAvailableDonations(): Promise<Donation[]> {
+    const donations = await storageService.getDonations();
+    return donations.filter(donation => donation.status === 'available');
   }
 
-  saveCategory(category: Category): void {
-    const categories = this.getCategories();
-    const existingIndex = categories.findIndex(cat => cat.id === category.id);
-    
-    if (existingIndex !== -1) {
-      categories[existingIndex] = category;
-    } else {
-      categories.push(category);
-    }
-    
-    localStorage.setItem(this.CATEGORIES_KEY, JSON.stringify(categories));
+  async updateDonation(donation: Donation): Promise<void> {
+    const updatedDonation = {
+      ...donation,
+      updatedAt: new Date().toISOString()
+    };
+    await storageService.updateDonation(updatedDonation);
   }
 
-  private getDefaultCategories(): Category[] {
-    const defaultCategories: Category[] = [
-      {
-        id: uuidv4(),
-        name: 'Roupas',
-        icon: '👕',
-        subcategories: [
-          { id: uuidv4(), name: 'Roupas Infantis', categoryId: '' },
-          { id: uuidv4(), name: 'Roupas Adultas', categoryId: '' },
-          { id: uuidv4(), name: 'Roupas de Frio', categoryId: '' },
-          { id: uuidv4(), name: 'Calçados', categoryId: '' }
-        ]
-      },
-      {
-        id: uuidv4(),
-        name: 'Alimentos',
-        icon: '🍞',
-        subcategories: [
-          { id: uuidv4(), name: 'Alimentos Não Perecíveis', categoryId: '' },
-          { id: uuidv4(), name: 'Cestas Básicas', categoryId: '' },
-          { id: uuidv4(), name: 'Produtos de Higiene', categoryId: '' }
-        ]
-      },
-      {
-        id: uuidv4(),
-        name: 'Móveis',
-        icon: '🪑',
-        subcategories: [
-          { id: uuidv4(), name: 'Móveis Pequenos', categoryId: '' },
-          { id: uuidv4(), name: 'Móveis Grandes', categoryId: '' },
-          { id: uuidv4(), name: 'Eletrodomésticos', categoryId: '' }
-        ]
-      },
-      {
-        id: uuidv4(),
-        name: 'Livros e Material Escolar',
-        icon: '📚',
-        subcategories: [
-          { id: uuidv4(), name: 'Livros Didáticos', categoryId: '' },
-          { id: uuidv4(), name: 'Material Escolar', categoryId: '' },
-          { id: uuidv4(), name: 'Brinquedos Educativos', categoryId: '' }
-        ]
-      },
-      {
-        id: uuidv4(),
-        name: 'Brinquedos',
-        icon: '🧸',
-        subcategories: [
-          { id: uuidv4(), name: 'Brinquedos Infantis', categoryId: '' },
-          { id: uuidv4(), name: 'Jogos', categoryId: '' },
-          { id: uuidv4(), name: 'Brinquedos Educativos', categoryId: '' }
-        ]
-      }
-    ];
-
-    // Set category IDs for subcategories
-    defaultCategories.forEach(category => {
-      category.subcategories.forEach(sub => {
-        sub.categoryId = category.id;
-      });
-    });
-
-    localStorage.setItem(this.CATEGORIES_KEY, JSON.stringify(defaultCategories));
-    return defaultCategories;
+  async deleteDonation(id: string): Promise<void> {
+    await storageService.deleteDonation(id);
   }
 
-  // Ratings
-  getRatings(): Rating[] {
-    try {
-      const data = localStorage.getItem(this.RATINGS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error getting ratings:', error);
-      return [];
-    }
+  // Deliveries
+  async createDelivery(delivery: Omit<Delivery, 'id' | 'createdAt' | 'updatedAt'>): Promise<Delivery> {
+    const newDelivery: Delivery = {
+      ...delivery,
+      id: this.generateId(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await storageService.saveDelivery(newDelivery);
+    return newDelivery;
   }
 
-  saveRating(rating: Rating): void {
-    const ratings = this.getRatings();
-    const existingIndex = ratings.findIndex(rat => rat.id === rating.id);
-    
-    if (existingIndex !== -1) {
-      ratings[existingIndex] = rating;
-    } else {
-      ratings.push(rating);
-    }
-    
-    localStorage.setItem(this.RATINGS_KEY, JSON.stringify(ratings));
+  async getDeliveries(): Promise<Delivery[]> {
+    return await storageService.getDeliveries();
   }
 
-  getRatingsByInstitution(institutionId: string): Rating[] {
-    const ratings = this.getRatings();
-    return ratings.filter(rating => rating.institutionId === institutionId);
+  async getDeliveriesByDonation(donationId: string): Promise<Delivery[]> {
+    const deliveries = await storageService.getDeliveries();
+    return deliveries.filter(delivery => delivery.donationId === donationId);
   }
 
-  // Initialize sample data
-  initializeSampleData(): void {
-    const institutions = this.getInstitutions();
-    if (institutions.length === 0) {
-      this.createSampleInstitutions();
-    }
+  async updateDelivery(delivery: Delivery): Promise<void> {
+    const updatedDelivery = {
+      ...delivery,
+      updatedAt: new Date().toISOString()
+    };
+    await storageService.updateDelivery(updatedDelivery);
   }
 
-  private createSampleInstitutions(): void {
-    const sampleInstitutions: Institution[] = [
-      {
-        id: uuidv4(),
-        name: 'Casa de Apoio São Francisco',
-        email: 'contato@casasaofrancisco.org',
-        password: '',
-        phone: '(11) 3456-7890',
-        cnpj: '12.345.678/0001-90',
-        type: 'institution',
-        description: 'Instituição dedicada ao apoio de famílias em situação de vulnerabilidade social, oferecendo assistência alimentar, educacional e de saúde.',
-        address: {
-          id: uuidv4(),
-          street: 'Rua das Flores',
-          number: '123',
-          neighborhood: 'Centro',
-          city: 'São Paulo',
-          state: 'SP',
-          zipCode: '01234-567',
-          latitude: -23.5505,
-          longitude: -46.6333
-        },
-        workingHours: [
-          { dayOfWeek: 0, isOpen: false, openTime: '', closeTime: '' },
-          { dayOfWeek: 1, isOpen: true, openTime: '08:00', closeTime: '17:00' },
-          { dayOfWeek: 2, isOpen: true, openTime: '08:00', closeTime: '17:00' },
-          { dayOfWeek: 3, isOpen: true, openTime: '08:00', closeTime: '17:00' },
-          { dayOfWeek: 4, isOpen: true, openTime: '08:00', closeTime: '17:00' },
-          { dayOfWeek: 5, isOpen: true, openTime: '08:00', closeTime: '17:00' },
-          { dayOfWeek: 6, isOpen: true, openTime: '08:00', closeTime: '12:00' }
-        ],
-        acceptedCategories: ['Roupas', 'Alimentos', 'Brinquedos'],
-        rating: 4.5,
-        totalRatings: 23,
-        verified: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: uuidv4(),
-        name: 'ONG Esperança',
-        email: 'contato@ongesperanca.org',
-        password: '',
-        phone: '(11) 2345-6789',
-        cnpj: '23.456.789/0001-01',
-        type: 'institution',
-        description: 'Organização não governamental focada na educação e desenvolvimento de crianças e adolescentes em comunidades carentes.',
-        address: {
-          id: uuidv4(),
-          street: 'Avenida da Esperança',
-          number: '456',
-          neighborhood: 'Vila Nova',
-          city: 'São Paulo',
-          state: 'SP',
-          zipCode: '02345-678',
-          latitude: -23.5489,
-          longitude: -46.6388
-        },
-        workingHours: [
-          { dayOfWeek: 0, isOpen: false, openTime: '', closeTime: '' },
-          { dayOfWeek: 1, isOpen: true, openTime: '09:00', closeTime: '18:00' },
-          { dayOfWeek: 2, isOpen: true, openTime: '09:00', closeTime: '18:00' },
-          { dayOfWeek: 3, isOpen: true, openTime: '09:00', closeTime: '18:00' },
-          { dayOfWeek: 4, isOpen: true, openTime: '09:00', closeTime: '18:00' },
-          { dayOfWeek: 5, isOpen: true, openTime: '09:00', closeTime: '18:00' },
-          { dayOfWeek: 6, isOpen: false, openTime: '', closeTime: '' }
-        ],
-        acceptedCategories: ['Livros e Material Escolar', 'Brinquedos', 'Roupas'],
-        rating: 4.8,
-        totalRatings: 15,
-        verified: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
+  // Statistics
+  async getStatistics() {
+    const [users, donations, deliveries] = await Promise.all([
+      this.getUsers(),
+      this.getDonations(),
+      this.getDeliveries()
+    ]);
 
-    localStorage.setItem(this.INSTITUTIONS_KEY, JSON.stringify(sampleInstitutions));
+    const institutions = users.filter(user => user.type === 'institution');
+    const donors = users.filter(user => user.type === 'donor');
+    const completedDeliveries = deliveries.filter(delivery => delivery.status === 'completed');
+
+    return {
+      totalUsers: users.length,
+      totalInstitutions: institutions.length,
+      totalDonors: donors.length,
+      totalDonations: donations.length,
+      availableDonations: donations.filter(d => d.status === 'available').length,
+      reservedDonations: donations.filter(d => d.status === 'reserved').length,
+      completedDonations: donations.filter(d => d.status === 'completed').length,
+      totalDeliveries: deliveries.length,
+      completedDeliveries: completedDeliveries.length,
+      pendingDeliveries: deliveries.filter(d => d.status === 'pending').length
+    };
+  }
+
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 }
 
