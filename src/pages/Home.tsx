@@ -10,6 +10,9 @@ import { useLocation } from '../contexts/LocationContext';
 import { useData } from '../contexts/DataContext';
 import { Institution, FilterOptions } from '../types';
 import { locationService } from '../services/locationService';
+import { dataService } from '../services/dataService';
+import { authService } from '../services/authService';
+import { fileService } from '../services/fileService';
 import { MapPin, Search, Filter, Heart } from 'lucide-react';
 import Swal from 'sweetalert2';
 
@@ -25,10 +28,6 @@ export const Home: React.FC = () => {
 
   // Initialize sample data on first load
   useEffect(() => {
-    const { dataService } = require('../services/dataService');
-    const { authService } = require('../services/authService');
-    const { fileService } = require('../services/fileService');
-    
     dataService.initializeSampleData();
     authService.initializeSampleData();
     fileService.initializeFolders();
